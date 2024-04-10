@@ -1,0 +1,98 @@
+---
+# tasks file for pre-deployment
+- name: Create kolla folder
+  ansible.builtin.file:
+    state: directory
+    path: /etc/kolla
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Copy openstack config files
+  copy:
+    src: files/globals.yml
+    dest: "/etc/kolla"
+
+
+- name: Disable docker repo if using local repo
+  ansible.builtin.lineinfile:
+    line: "enable_docker_repo: false"
+    path: "/etc/kolla/globals.yml"
+  when: apt_repo_ip is defined
+
+- name: Configure local registry on globals.yml 
+  ansible.builtin.lineinfile:
+    line: "docker_registry: {{ docker_local_repo }}"
+    path: "/etc/kolla/globals.yml"
+  when: docker_local_repo is defined
+
+- name: Configure local registry as insecure
+  ansible.builtin.lineinfile:
+    line: "docker_registry_insecure: yes"
+    path: "/etc/kolla/globals.yml"
+  when: docker_local_repo is defined
+
+- name: Copy inventory machines 
+  copy:
+    src: "{{ inventory_dir }}/inventory"
+    dest: "/etc/kolla/inventory"
+
+- name: Copy inventory template
+  ansible.builtin.lineinfile:
+    line: "{{ lookup('file', 'files/multinode') }}"
+    path: "/etc/kolla/inventory"
+
+- name: Install Base packages
+  ansible.builtin.apt:
+    pkg: "{{ item }}"
+    allow_downgrade: yes
+  with_items: 
+    - git
+    - python3-dev
+    - libffi-dev
+    - gcc
+    - libssl-dev
+    - python3-venv
+    - python3-pip
+    - htop
+    - tmux
+    - sshpass
+    - net-tools
+
+- name: Install ansible
+  ansible.builtin.pip:
+    name: 'ansible-core==2.15'
+
+- name: Clone kolla-ansible
+  ansible.builtin.git:
+    repo: 'https://opendev.org/openstack/kolla-ansible'
+    dest: /root/kolla-ansible
+    #version: master
+    version: stable/2023.2
+
+- name: Install kolla-ansible
+  ansible.builtin.pip:
+    chdir: /root
+    name: ./kolla-ansible
+  
+- name: Install kolla deps
+  ansible.builtin.command: 
+    cmd: kolla-ansible install-deps
+
+- name: Install openstack client
+  ansible.builtin.pip:
+    name: 'python-openstackclient'
+
+- name: Copy password template file
+  copy:
+    remote_src: true
+    src: /root/kolla-ansible/etc/kolla/passwords.yml
+    dest: /etc/kolla
+
+- name: Generate new passwords
+  ansible.builtin.command: 
+    cmd: python3 ./generate_passwords.py
+    chdir: /root/kolla-ansible/tools
+
+- name: Set hosts file
+  shell: echo "$( ifconfig ens3 | grep 'inet ' | awk '{ print $2 }') $(hostname -s )" > /etc/hosts  

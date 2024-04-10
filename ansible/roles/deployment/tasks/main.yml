@@ -1,0 +1,29 @@
+---
+# tasks file for deployment
+- name: Bootstrap
+  ansible.builtin.command: 
+    cmd: kolla-ansible -i inventory bootstrap-servers
+    chdir: /etc/kolla
+
+- name: pre-checs
+  ansible.builtin.command: 
+    cmd: kolla-ansible -i inventory prechecks
+    chdir: /etc/kolla
+  
+- name: deploy
+  ansible.builtin.command: 
+    cmd: kolla-ansible -i inventory deploy
+    chdir: /etc/kolla
+
+- name: post-deploy
+  ansible.builtin.command: 
+    cmd: kolla-ansible -i inventory post-deploy
+    chdir: /etc/kolla
+
+- name: Show admin password
+  ansible.builtin.shell:
+    cmd: "cat /etc/kolla/admin-openrc.sh  | grep PASS | cut -d = -f 2"
+    executable: /bin/bash
+  register: AdminPass
+
+- debug: msg="Admin password {{ AdminPass.stdout }}"

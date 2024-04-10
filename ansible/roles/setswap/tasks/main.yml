@@ -6,7 +6,7 @@
     path: /swapfile
 
 - name: Allocate the swap file
-  shell: fallocate -l 2G /swapfile
+  shell: fallocate -l 3G /swapfile
   when: idCheckSwap.stat.exists == false
 
 - name: Change permission of the swap file

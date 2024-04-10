@@ -1,0 +1,20 @@
+- name: Configure Compute nodes
+  hosts: compute
+  roles:
+    - repository-config
+    - compute-cinder
+
+- name: Configure Controller nodes
+  hosts: control 
+  roles:
+    - repository-config
+    - setswap
+    - controller-swift
+
+- name: Configure deployment
+  hosts: deployment
+  roles:
+    - repository-config
+    - setswap
+    - pre-deployment
+    - deployment

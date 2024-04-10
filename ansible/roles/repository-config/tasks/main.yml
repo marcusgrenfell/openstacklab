@@ -1,0 +1,30 @@
+---
+# tasks file for repository-config
+- name: Set hosts file
+  shell: echo "$( ifconfig ens3 | grep 'inet ' | awk '{ print $2 }') $(hostname -s )" > /etc/hosts  
+
+- name: Remove sources.list file
+  ansible.builtin.file:
+    path: /etc/apt/sources.list
+    state: absent
+  when: apt_repo_ip is defined
+
+- name: Download repository file
+  get_url:
+    url: http://{{ apt_repo_ip }}/sources.list.debian
+    dest: /etc/apt/sources.list
+  when: apt_repo_ip is defined
+
+- name: Download Docker GPG fike
+  get_url:
+    url: http://{{ apt_repo_ip }}/docker.gpg
+    #dest: /etc/apt/keyrings/docker.gpg
+    dest: /etc/apt/trusted.gpg.d/docker.gpg
+  when: apt_repo_ip is defined
+
+- name: Update all packages to their latest version
+  ansible.builtin.apt:
+    name: "*"
+    state: latest
+    update_cache: true
+  

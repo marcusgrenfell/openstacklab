@@ -1,0 +1,53 @@
+---
+# tasks file for initial-openstack-config
+- name: Check whether cirros image exists
+  register: cirrosimage
+  stat:
+    path: /root/cirros-0.6.2-x86_64-disk.img
+
+- name: Download Cirros image
+  ansible.builtin.get_url:
+    url: http://download.cirros-cloud.net/0.6.2/cirros-0.6.2-x86_64-disk.img
+    dest: /root
+  when: cirrosimage.stat.exists == false
+
+- name: Import cirros image
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack image create --file /root/cirros-0.6.2-x86_64-disk.img --disk-format qcow2 cirros"
+    executable: /bin/bash
+
+- name: Create network
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack network create --disable-port-security internal"
+    executable: /bin/bash
+
+- name: Create subnet
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack subnet create --network internal --subnet-range 192.168.10.0/24 internal"
+    executable: /bin/bash
+
+- name: Create flavor
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack flavor create --public --ram 128 m2.mini"
+    executable: /bin/bash
+
+- name: Create volume for server 1
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack volume create --size 1 --image cirros --bootable server1"
+    executable: /bin/bash
+
+- name: Create server1 
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack server create --flavor m2.mini --volume server1 --network internal server1"
+    executable: /bin/bash
+
+- name: Create volume for server 2
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack volume create --size 1 --image cirros --bootable server2"
+    executable: /bin/bash
+
+- name: Create server2 
+  ansible.builtin.shell:
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack server create --flavor m2.mini --volume server1 --network internal server2"
+    executable: /bin/bash
+

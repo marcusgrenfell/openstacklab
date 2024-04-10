@@ -3,7 +3,7 @@
 #
 resource "libvirt_volume" "deployment" {
   name           = "deployment"
-  base_volume_id = libvirt_volume.ubuntu-qcow2.id
+  base_volume_id = libvirt_volume.baseimage-qcow2.id
   #pool   = libvirt_pool.tera.name
   size = 1073741824 * var.deployment_disksize
 }
@@ -50,17 +50,16 @@ resource "libvirt_domain" "deployment" {
 #
 resource "libvirt_volume" "controller" {
   name           = "controller-${count.index + 1}"
-  base_volume_id = libvirt_volume.ubuntu-qcow2.id
+  base_volume_id = libvirt_volume.baseimage-qcow2.id
   #pool   = libvirt_pool.tera.name
   size  = 1073741824 * var.controller_disksize
   count = var.controller_count
 }
 
-resource "libvirt_volume" "controller_ceph" {
-  name           = "controller-ceph-${count.index + 1}"
-  #base_volume_id = libvirt_volume.ubuntu-qcow2.id
+resource "libvirt_volume" "controller_swift" {
+  name           = "controller-swift-${count.index + 1}"
   pool   = libvirt_pool.tera.name
-  size  = 1073741824 * var.controller_ceph_disksize
+  size  = 1073741824 * var.controller_swift_disksize
   count = var.controller_count
 }
 
@@ -79,7 +78,7 @@ resource "libvirt_domain" "controller" {
   }
 
   disk {
-    volume_id = libvirt_volume.controller_ceph[count.index].id
+    volume_id = libvirt_volume.controller_swift[count.index].id
   #  scsi      = "true"
   }
 
@@ -113,18 +112,18 @@ resource "libvirt_domain" "controller" {
 #
 resource "libvirt_volume" "compute" {
   name           = "compute-${count.index + 1}"
-  base_volume_id = libvirt_volume.ubuntu-qcow2.id
+  base_volume_id = libvirt_volume.baseimage-qcow2.id
   #pool   = libvirt_pool.tera.name
   size  = 1073741824 * var.compute_disksize
   count = var.compute_count
 }
 
 
-resource "libvirt_volume" "compute_cinder" {
-  name           = "compute-cinder-${count.index + 1}"
+resource "libvirt_volume" "compute_ceph" {
+  name           = "compute-ceph-${count.index + 1}"
   #base_volume_id = libvirt_volume.ubuntu-qcow2.id
   pool   = libvirt_pool.tera.name
-  size  = 1073741824 * var.compute_cinder_disksize
+  size  = 1073741824 * var.compute_ceph_disksize
   count = var.compute_count
 }
 
@@ -144,7 +143,7 @@ resource "libvirt_domain" "compute" {
   }
 
   disk {
-    volume_id = libvirt_volume.compute_cinder[count.index].id
+    volume_id = libvirt_volume.compute_ceph[count.index].id
   #  scsi      = "true"
   }
   network_interface {

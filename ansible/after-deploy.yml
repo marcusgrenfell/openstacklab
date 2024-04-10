@@ -1,0 +1,4 @@
+- name: Configure deployment
+  hosts: deployment
+  roles:
+    - initial-openstack-config

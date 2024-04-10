@@ -30,9 +30,9 @@ resource "libvirt_cloudinit_disk" "controller-cloud_init" {
 
 
 
-resource "libvirt_volume" "ubuntu-qcow2" {
-  name = "ubuntu-qcow2"
+resource "libvirt_volume" "baseimage-qcow2" {
+  name = "baseimage-qcow2"
   #pool   = libvirt_pool.tera.name
-  source = var.ubuntu_image_url
+  source = var.baseimage_image_url
   format = "qcow2"
 }
