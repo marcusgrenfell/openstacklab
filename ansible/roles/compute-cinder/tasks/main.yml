@@ -1,0 +1,23 @@
+---
+# tasks file for compute-cinder
+- name: Install Compute packages
+  ansible.builtin.apt:
+    pkg: "{{ item }}"
+    allow_downgrade: yes
+  with_items: 
+    - htop
+    - lvm2
+    - parted
+
+- name: Create partition to LVM
+  community.general.parted:
+    device: /dev/vda
+    number: 1
+    flags: [ lvm ]
+    state: present
+
+- name: Create a volume group cinder-volumes
+  become: true
+  lvg:
+    vg: cinder-volumes
+    pvs: /dev/vda1

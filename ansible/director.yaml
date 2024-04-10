@@ -1,0 +1,23 @@
+#- name: Configure os and install base director
+#  hosts: director
+#  roles:
+#    - director-temp
+- name: Configure Compute nodes
+  hosts: compute
+  roles:
+    - director-temp
+    - compute-cinder
+
+- name: Configure Controller nodes
+  hosts: control 
+  roles:
+    - director-temp
+    - setswap
+    - controller-swift
+
+- name: Configure Director
+  hosts: deployment
+  roles:
+    - director-temp
+    - setswap
+    - director

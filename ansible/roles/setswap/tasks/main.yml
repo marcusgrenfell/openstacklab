@@ -1,0 +1,35 @@
+---
+# tasks file for setswap
+- name: Check whether "/swapfile" exists
+  register: idCheckSwap
+  stat:
+    path: /swapfile
+
+- name: Allocate the swap file
+  shell: fallocate -l 2G /swapfile
+  when: idCheckSwap.stat.exists == false
+
+- name: Change permission of the swap file
+  file:
+    path: /swapfile
+    mode: 600
+  when: idCheckSwap.stat.exists == false
+
+- name: Create a swap area on the swap file
+  shell: mkswap /swapfile
+  when: idCheckSwap.stat.exists == false
+
+- name: Activate the swap file as a swap memory
+  shell: swapon /swapfile
+  when: idCheckSwap.stat.exists == false
+
+- name: Append configuration in /etc/fstab
+  shell: echo "\n/swapfile swap swap defaults 0 0\n" >> /etc/fstab
+  when: idCheckSwap.stat.exists == false
+
+
+#- name: Set swappiness level
+#  shell: sysctl vm.swappiness={{ swap_vars.swappiness }}
+
+#- name: Append configuration in /etc/sysctl.conf
+#vir  shell: echo "\nvm.swappiness={{ swap_vars.swappiness }}\n" >> /etc/sysctl.conf

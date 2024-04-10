@@ -1,0 +1,11 @@
+---
+# tasks file for controller-swift
+- name: Install Compute packages
+  ansible.builtin.apt:
+    pkg: "{{ item }}"
+    allow_downgrade: yes
+  with_items: 
+    - htop
+    - lvm2
+    - parted
+    - xfsprogs
