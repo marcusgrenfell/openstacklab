@@ -5,11 +5,17 @@
     cmd: kolla-ansible -i inventory bootstrap-servers
     chdir: /etc/kolla
 
+- name: certificates
+  ansible.builtin.command: 
+    cmd: kolla-ansible -i inventory certificates
+    chdir: /etc/kolla
+  when: ansible_ssl is defined
+
 - name: pre-checs
   ansible.builtin.command: 
     cmd: kolla-ansible -i inventory prechecks
     chdir: /etc/kolla
-  
+
 - name: deploy
   ansible.builtin.command: 
     cmd: kolla-ansible -i inventory deploy
@@ -19,6 +25,12 @@
   ansible.builtin.command: 
     cmd: kolla-ansible -i inventory post-deploy
     chdir: /etc/kolla
+
+- name: Set SSL CA adminrc
+  ansible.builtin.lineinfile:
+    line: "export OS_CACERT=/etc/kolla/certificates/ca/root.crt"
+    path: "/etc/kolla/admin-openrc.sh"
+  when: kolla_ssl is defined
 
 - name: Show admin password
   ansible.builtin.shell:

@@ -11,6 +11,7 @@ control
 
 [storage:children]
 compute
+#control
 
 [swift:children]
 control

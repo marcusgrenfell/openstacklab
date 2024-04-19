@@ -63,6 +63,28 @@ resource "libvirt_volume" "controller_swift" {
   count = var.controller_count
 }
 
+resource "libvirt_volume" "controller_ceph_a" {
+  name           = "controller-cepha-${count.index + 1}"
+  pool   = libvirt_pool.tera.name
+  size  = 1073741824 * var.controller_swift_disksize
+  count = var.controller_count
+}
+
+resource "libvirt_volume" "controller_ceph_b" {
+  name           = "controller-cephb-${count.index + 1}"
+  pool   = libvirt_pool.tera.name
+  size  = 1073741824 * var.controller_swift_disksize
+  count = var.controller_count
+}
+
+resource "libvirt_volume" "controller_ceph_c" {
+  name           = "controller-cephc-${count.index + 1}"
+  pool   = libvirt_pool.tera.name
+  size  = 1073741824 * var.controller_swift_disksize
+  count = var.controller_count
+}
+
+
 resource "libvirt_domain" "controller" {
   count     = var.controller_count
   name      = "controller-${count.index + 1}"
@@ -79,6 +101,21 @@ resource "libvirt_domain" "controller" {
 
   disk {
     volume_id = libvirt_volume.controller_swift[count.index].id
+  #  scsi      = "true"
+  }
+
+  disk {
+    volume_id = libvirt_volume.controller_ceph_a[count.index].id
+  #  scsi      = "true"
+  }
+
+  disk {
+    volume_id = libvirt_volume.controller_ceph_b[count.index].id
+  #  scsi      = "true"
+  }
+
+  disk {
+    volume_id = libvirt_volume.controller_ceph_c[count.index].id
   #  scsi      = "true"
   }
 

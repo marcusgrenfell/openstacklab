@@ -36,7 +36,7 @@ variable "deployment_memory" {
 #
 variable "controller_count" {
   type    = number
-  default = 2
+  default = 3
 }
 
 variable "controller_vcpu" {
@@ -64,11 +64,11 @@ variable "controller_swift_disksize" {
 #
 variable "compute_count" {
   type    = number
-  default = 1
+  default = 3
 }
 variable "compute_vcpu" {
   type    = number
-  default = 4 
+  default = 2 
 }
 
 variable "compute_memory" {

@@ -13,7 +13,6 @@
     src: files/globals.yml
     dest: "/etc/kolla"
 
-
 - name: Disable docker repo if using local repo
   ansible.builtin.lineinfile:
     line: "enable_docker_repo: false"
@@ -31,6 +30,17 @@
     line: "docker_registry_insecure: yes"
     path: "/etc/kolla/globals.yml"
   when: docker_local_repo is defined
+
+- name: Configure SSL tags on globals
+  ansible.builtin.lineinfile:
+    line: "{{ item }}"
+    path: "/etc/kolla/globals.yml"
+  when: kolla_ssl is defined
+  with_items: 
+    - "kolla_enable_tls_internal: yes"
+    - "kolla_enable_tls_external: yes"
+    - "kolla_copy_ca_into_containers: yes"
+    - "openstack_cacert: /etc/ssl/certs/ca-certificates.crt"
 
 - name: Copy inventory machines 
   copy:

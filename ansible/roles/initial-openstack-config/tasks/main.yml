@@ -48,6 +48,6 @@
 
 - name: Create server2 
   ansible.builtin.shell:
-    cmd: "source /etc/kolla/admin-openrc.sh && openstack server create --flavor m2.mini --volume server1 --network internal server2"
+    cmd: "source /etc/kolla/admin-openrc.sh && openstack server create --flavor m2.mini --volume server2 --network internal server2"
     executable: /bin/bash
 

@@ -2,14 +2,15 @@
   hosts: compute
   roles:
     - repository-config
-    - compute-cinder
+      #    - compute-cinder
 
 - name: Configure Controller nodes
   hosts: control 
   roles:
     - repository-config
     - setswap
-    - controller-swift
+      #    - controller-swift
+    - compute-cinder
 
 - name: Configure deployment
   hosts: deployment
