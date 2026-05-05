@@ -1,36 +1,31 @@
 ---
 # tasks file for deployment
-- name: Bootstrap
-  ansible.builtin.command: 
-    cmd: kolla-ansible -i inventory bootstrap-servers
-    chdir: /etc/kolla
-
 - name: certificates
   ansible.builtin.command: 
-    cmd: kolla-ansible -i inventory certificates
+    cmd: kolla-ansible certificates -i inventory 
     chdir: /etc/kolla
-  when: ansible_ssl is defined
+  when: kolla_ssl is defined and kolla_ssl == "yes"
 
 - name: pre-checs
   ansible.builtin.command: 
-    cmd: kolla-ansible -i inventory prechecks
+    cmd: kolla-ansible prechecks -i inventory 
     chdir: /etc/kolla
 
 - name: deploy
   ansible.builtin.command: 
-    cmd: kolla-ansible -i inventory deploy
+    cmd: kolla-ansible deploy -i inventory 
     chdir: /etc/kolla
 
 - name: post-deploy
   ansible.builtin.command: 
-    cmd: kolla-ansible -i inventory post-deploy
+    cmd: kolla-ansible post-deploy -i inventory 
     chdir: /etc/kolla
 
 - name: Set SSL CA adminrc
   ansible.builtin.lineinfile:
     line: "export OS_CACERT=/etc/kolla/certificates/ca/root.crt"
     path: "/etc/kolla/admin-openrc.sh"
-  when: kolla_ssl is defined
+  when: kolla_ssl is defined and kolla_ssl == "yes"
 
 - name: Show admin password
   ansible.builtin.shell:
@@ -39,3 +34,9 @@
   register: AdminPass
 
 - debug: msg="Admin password {{ AdminPass.stdout }}"
+
+- debug: msg="Login url https://{{ kolla_internal_address }}"
+  when: kolla_ssl is defined and kolla_ssl == 'yes'
+
+- debug: msg="Login url http://{{ kolla_internal_address }}"
+  when: kolla_ssl is not defined or kolla_ssl == 'no'

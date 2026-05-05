@@ -1,0 +1,204 @@
+---
+# tasks file for ceph
+- name: Set fact to first ceph node
+  set_fact:
+    first_ceph_host: "{{ groups['ceph'][0] }}"
+    other_ceph_hosts: "{{ groups['ceph'][1:] }}"
+    deployment_host: "{{ groups['deployment'][0] }}"
+
+- name: Install ceph packages on deployment node
+  ansible.builtin.apt:
+    pkg: "{{ item }}"
+  with_items:
+    - ceph-common
+  when: inventory_hostname == deployment_host
+
+- name: Install ceph and lvm packages on first ceph node
+  ansible.builtin.apt:
+    pkg: "{{ item }}"
+  with_items:
+    - cephadm
+    - ceph-common
+    - lvm2
+  when: inventory_hostname == first_ceph_host
+
+- name: Install ceph and lvm packages on another hosts
+  ansible.builtin.apt:
+    pkg: "{{ item }}"
+  with_items:
+    - ceph-common
+    - lvm2
+  when: inventory_hostname in other_ceph_hosts
+
+- name: Ceph bootstrap using public registry
+  shell: cephadm bootstrap --skip-monitoring-stack --single-host-defaults --mon-ip {{ ansible_host }} > /root/cephexit.txt
+  when: 
+    - inventory_hostname == first_ceph_host
+    - docker_local_repo is not defined
+
+- name: Add registry as insecure registry in registries.conf
+  ansible.builtin.blockinfile:
+    path: "/etc/containers/registries.conf"
+    state: present
+    marker: "# {mark} ansible managed : {{ docker_local_repo }}"
+    create: true
+    mode: '0644'
+    block: |
+      [[registry]]
+      location = '{{ docker_local_repo }}'
+      insecure = true
+  when: 
+    - dockar_local_repo_insecure is defined
+
+- name: Ceph bootstrap custom registry
+  shell: "cephadm --image {{ docker_local_repo }}/ceph/ceph:v19 bootstrap --skip-monitoring-stack --single-host-defaults --mon-ip {{ ansible_host }} > /root/cephexit.txt"
+  when: 
+    - inventory_hostname == first_ceph_host
+    - docker_local_repo is defined
+    - ansible_facts["distribution_version"] == "24.04"
+
+- name: Ceph bootstrap custom registry
+  shell: "cephadm --image {{ docker_local_repo }}/ceph/ceph:v17 bootstrap --skip-monitoring-stack --single-host-defaults --mon-ip {{ ansible_host }} > /root/cephexit.txt"
+  when: 
+    - inventory_hostname == first_ceph_host
+    - docker_local_repo is defined
+    - ansible_facts["distribution_release"] == "jammy"
+
+- name: Slurp authorized_keys do primeiro host
+  slurp:
+    src: /root/.ssh/authorized_keys
+  register: sshkeys_slurp
+  when: inventory_hostname == first_ceph_host
+
+- name: Copy ssh key to another hosts
+  copy:
+    dest: /root/.ssh/authorized_keys
+    content: "{{ hostvars[first_ceph_host]['sshkeys_slurp']['content'] | b64decode }}"
+    mode: '0600'
+    owner: root
+    group: root
+  when: inventory_hostname in other_ceph_hosts
+
+- name: Ceph add another hosts
+  command: cephadm shell -- ceph orch host add compute-{{ cephnumber + 2 }} {{ item }}
+  with_items: "{{ other_ceph_hosts }}"
+  loop_control:
+    index_var: cephnumber
+  when: inventory_hostname == first_ceph_host
+  
+- name: Set Label to _admin to hosts
+  command: cephadm shell -- ceph orch host label add compute-{{ cephnumber + 2 }} _admin
+  with_items: "{{ other_ceph_hosts }}"
+  loop_control:
+    index_var: cephnumber
+  when: inventory_hostname == first_ceph_host
+
+#- name: Set hosts as mon
+#  command: cephadm shell -- ceph orch apply mon --placement="compute-{{ cephnumber + 2 }}"
+#  with_items: "{{ other_ceph_hosts }}"
+#  loop_control:
+#    index_var: cephnumber
+#  when: inventory_hostname == first_ceph_host
+
+#- name: Set hosts as mgr
+#  command: cephadm shell -- ceph orch apply mgr --placement="compute-{{ cephnumber + 2 }}"
+#  with_items: "{{ other_ceph_hosts }}"
+#  loop_control:
+#    index_var: cephnumber
+#  when: inventory_hostname == first_ceph_host
+
+- name: apply osd
+  command: cephadm shell -- ceph orch apply osd --all-available-devices
+  when: inventory_hostname == first_ceph_host  
+
+- name: create pools
+  command: cephadm shell -- ceph osd pool create {{ item }}
+  with_items:
+    - volumes
+    - images
+    - backups
+    - vms 
+  when: inventory_hostname == first_ceph_host  
+
+- name: rdb pool init
+  command: cephadm shell -- rbd pool init {{ item }}
+  with_items:
+    - volumes
+    - images
+    - backups
+    - vms 
+  when: inventory_hostname == first_ceph_host  
+
+- name: get ceph.conf
+  slurp:
+    src: /etc/ceph/ceph.conf
+  register: cephconfencoded
+  when: inventory_hostname == first_ceph_host
+
+- name: Decode ceph.conf file
+  set_fact:
+    cephconf: "{{ cephconfencoded.content | b64decode | replace('\t', '') }}"
+  when: inventory_hostname == first_ceph_host
+
+- name: Save ceph.conf to deployment
+  copy:
+    content: "{{ cephconf }}"
+    dest: /etc/ceph/ceph.conf
+  delegate_to: "{{ deployment_host }}"
+  when: 
+    - inventory_hostname == first_ceph_host
+    - deployment_host is defined
+
+#- name: Copiar ceph.conf para o deployment
+#  copy:
+#    dest: /etc/ceph/ceph.conf
+#    content: "{{ hostvars[first_ceph_host]['cephconfencoded']['content'] | b64decode | replace('\t', '') }}"
+#  when: inventory_hostname == deployment_host
+
+- name: get ceph.client.admin.keyring
+  slurp:
+    src: /etc/ceph/ceph.client.admin.keyring
+  register: cephkeyencoded
+  when: inventory_hostname == first_ceph_host
+
+- name: Decode ceph.client.admin.keyring file
+  set_fact:
+    cephkey: "{{ cephkeyencoded.content | b64decode | replace('\t', '') }}"
+  when: inventory_hostname == first_ceph_host
+
+- name: Save ceph.conf to ceph.client.admin.keyring
+  copy:
+    content: "{{ cephkey }}"
+    dest: /etc/ceph/ceph.client.admin.keyring
+  when: 
+    - inventory_hostname == first_ceph_host  
+    - deployment_host is defined
+  delegate_to: "{{ deployment_host }}"
+
+- name: Add lines to ceph.conf
+  lineinfile:
+    path: /etc/ceph/ceph.conf
+    line: "{{ item.line }}"
+    insertafter: "[global]"
+  loop:
+    - { line: "mon_initial_members = compute-1" }
+    - { line: "auth_cluster_required = cephx" }
+    - { line: "auth_service_required = cephx" }
+    - { line: "auth_client_required = cephx" }
+  delegate_to: "{{ deployment_host }}"
+  when: 
+    - inventory_hostname == first_ceph_host  
+    - deployment_host is defined
+
+- name: Copy ceph_config script
+  when: inventory_hostname == deployment_host
+  copy:
+    src: files/ceph_config.sh
+    dest: "/root/ceph_config.sh"
+    mode: "u=rwx,g=r,o=r"
+
+- name: Run ceph_config
+  command: 
+    cmd: ./ceph_config.sh
+    chdir: /root
+  when: inventory_hostname == deployment_host

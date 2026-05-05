@@ -1,0 +1,5 @@
+- name: Configure deployment
+  hosts: deployment
+  roles:
+    - deployment
+    

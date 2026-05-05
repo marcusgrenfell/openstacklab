@@ -1,45 +1,57 @@
-data "template_file" "user_data" {
-  template = templatefile("${path.module}/files/cloud_init.cfg",
-    {
-      password = var.password
-      hostname = "deployment"
-  })
+# ssh Key
+resource "local_sensitive_file" "ssh_private_key" {
+  content  = tls_private_key.ssh_key.private_key_pem
+  filename = "../ansible/id_rsa.pem"
 }
 
-data "template_file" "network_config" {
-  template = file("${path.module}/files/network_config.cfg")
+resource "local_sensitive_file" "ssh_public_key" {
+  content  = tls_private_key.ssh_key.public_key_openssh
+  filename = "../ansible/id_rsa.pub"
 }
+
+resource "tls_private_key" "ssh_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+#ansible inventory
+#resource "local_file" "inventory" {
+#  content = templatefile("${path.module}/files/inventory.tmpl",
+#    {
+#      compute    = [for i in range(var.compute_count) : "10.17.4.${201 + i}"]
+#      controller = [for i in range(var.controller_count) : "10.17.4.${101 + i}"]
+#      deployment = ["10.17.4.50"]
+#      password   = var.password
+#      yourname   = var.yourname
+#  })
+#  filename   = "../ansible/inventory/inventory"
+#  depends_on = [libvirt_domain.compute, libvirt_domain.controller, libvirt_domain.deployment]
+#}
 
 resource "local_file" "inventory" {
   content = templatefile("${path.module}/files/inventory.tmpl",
     {
-      compute    = libvirt_domain.compute.*.network_interface.0.addresses.0
-      controller = libvirt_domain.controller.*.network_interface.0.addresses.0
-      deployment = libvirt_domain.deployment.*.network_interface.0.addresses.0
-      password   = var.password
+      compute = [
+        for i in range(var.compute_count) : {
+          name = "compute-${i + 1}"
+          ip   = "10.17.4.${201 + i}"
+        }
+      ]
+      controller = [
+        for i in range(var.controller_count) : {
+          name = "controller-${i + 1}"
+          ip   = "10.17.4.${101 + i}"
+        }
+      ]
+      deployment = [
+        {
+          name = "deployment"
+          ip   = "10.17.4.50"
+        }
+      ]
+      password = var.password
+      yourname = var.yourname
   })
   filename   = "../ansible/inventory/inventory"
   depends_on = [libvirt_domain.compute, libvirt_domain.controller, libvirt_domain.deployment]
-}
-
-
-
-# computes
-data "template_file" "compute_user_data" {
-  count = var.compute_count
-  template = templatefile("${path.module}/files/cloud_init.cfg",
-    {
-      password = var.password
-      hostname = "compute-${count.index + 1}"
-  })
-}
-
-
-data "template_file" "controller_user_data" {
-  count = var.controller_count
-  template = templatefile("${path.module}/files/cloud_init.cfg",
-    {
-      password = var.password
-      hostname = "controller-${count.index + 1}"
-  })
 }

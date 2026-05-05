@@ -24,13 +24,11 @@
 # Dummy variable to allow Ansible to accept this file.
 workaround_ansible_issue_8743: yes
 
-# This variable is used as "any_errors_fatal" setting for the setup (gather
-# facts) plays.
-# This is useful for weeding out failing hosts early to avoid late failures
-# due to missing facts (especially cross-host).
-# Do note this still supports host fact caching and it will not affect
-# scenarios with all facts cached (as there is no task to fail).
-#kolla_ansible_setup_any_errors_fatal: false
+# This variable may be used to set the maximum failure percentage for all
+# plays. More fine-grained control is possible via per-service variables, e.g.
+# nova_max_fail_percentage. The default behaviour is to set a max fail
+# percentage of 100, which is equivalent to not setting it.
+#kolla_max_fail_percentage:
 
 ###############
 # Kolla options
@@ -39,10 +37,10 @@ workaround_ansible_issue_8743: yes
 #config_strategy: "COPY_ALWAYS"
 
 # Valid options are ['centos', 'debian', 'rocky', 'ubuntu']
-kolla_base_distro: "debian"
+kolla_base_distro: "ubuntu"
 
 # Do not override this unless you know what you are doing.
-openstack_release: "2023.2"
+openstack_release: "2024.2"
 
 # Docker image tag used by default.
 #openstack_tag: "{{ openstack_release ~ openstack_tag_suffix }}"
@@ -58,7 +56,7 @@ openstack_release: "2023.2"
 # All-In-One without haproxy and keepalived, you can set enable_haproxy to no
 # in "OpenStack options" section, and set this value to the IP of your
 # 'network_interface' as set in the Networking section below.
-kolla_internal_vip_address: "10.17.4.60"
+kolla_internal_vip_address: "10.10.10.254"
 
 # This is the DNS name that maps to the kolla_internal_vip_address VIP. By
 # default it is the same as kolla_internal_vip_address.
@@ -84,7 +82,29 @@ kolla_internal_vip_address: "10.17.4.60"
 ##################
 
 # Valid options are [ docker, podman ]
-#kolla_container_engine: docker
+kolla_container_engine: podman
+
+
+################
+# Docker options
+################
+
+# Custom docker registry settings:
+#docker_registry:
+# Please read the docs carefully before applying docker_registry_insecure.
+#docker_registry_insecure: "no"
+#docker_registry_username:
+# docker_registry_password is set in the passwords.yml file.
+
+# Namespace of images:
+#docker_namespace: "kolla"
+
+# Docker client timeout in seconds.
+#docker_client_timeout: 120
+
+#docker_configure_for_zun: "no"
+#containerd_configure_for_zun: "no"
+#containerd_grpc_gid: 42463
 
 ###################
 # Messaging options
@@ -102,11 +122,11 @@ kolla_internal_vip_address: "10.17.4.60"
 # interface by default. This interface must contain an IP address.
 # It is possible for hosts to have non-matching names of interfaces - these can
 # be set in an inventory file per host or per group or stored separately, see
-#     http://docs.ansible.com/ansible/intro_inventory.html
+#     http://docs.ansible.com/ansible/latest/intro_inventory.html
 # Yet another way to workaround the naming problem is to create a bond for the
 # interface on all hosts and give the bond name here. Similar strategy can be
 # followed for other types of interfaces.
-network_interface: "ens3"
+network_interface: "enp0s3"
 
 # These can be adjusted for even more customization. The default is the same as
 # the 'network_interface'. These interfaces must contain an IP address.
@@ -135,7 +155,7 @@ network_interface: "ens3"
 # though an IP address can exist on this interface, it will be unusable in most
 # configurations. It is recommended this interface not be configured with any IP
 # addresses for that reason.
-neutron_external_interface: "ens4"
+neutron_external_interface: "enp0s4"
 
 # Valid options are [ openvswitch, ovn, linuxbridge, vmware_nsxv, vmware_nsxv3, vmware_nsxp, vmware_dvs ]
 # if vmware_nsxv3 or vmware_nsxp is selected, enable_openvswitch MUST be set to "no" (default is yes)
@@ -225,7 +245,7 @@ neutron_plugin_agent: "ovn"
 #kolla_copy_ca_into_containers: "no"
 #haproxy_backend_cacert: "{{ 'ca-certificates.crt' if kolla_base_distro in ['debian', 'ubuntu'] else 'ca-bundle.trust.crt' }}"
 #haproxy_backend_cacert_dir: "/etc/ssl/certs"
-
+#database_enable_tls_backend: "{{ 'yes' if kolla_enable_tls_backend | bool and enable_proxysql | bool else 'no' }}"
 ##################
 # Backend options
 ##################
@@ -280,7 +300,7 @@ neutron_plugin_agent: "ovn"
 
 # Enable core OpenStack services. This includes:
 # glance, keystone, neutron, nova, heat, and horizon.
-enable_openstack_core: "yes"
+#enable_openstack_core: "yes"
 
 # These roles are required for Kolla to be operation, however a savvy deployer
 # could disable some of these required roles and run their own services.
@@ -294,7 +314,6 @@ enable_openstack_core: "yes"
 #enable_neutron: "{{ enable_openstack_core | bool }}"
 #enable_nova: "{{ enable_openstack_core | bool }}"
 #enable_rabbitmq: "{{ 'yes' if om_rpc_transport == 'rabbit' or om_notify_transport == 'rabbit' else 'no' }}"
-#enable_outward_rabbitmq: "{{ enable_murano | bool }}"
 
 # OpenStack services can be enabled or disabled with these options
 #enable_aodh: "no"
@@ -306,9 +325,8 @@ enable_openstack_core: "yes"
 #enable_central_logging: "no"
 #enable_ceph_rgw: "no"
 #enable_ceph_rgw_loadbalancer: "{{ enable_ceph_rgw | bool }}"
-#enable_cinder: "no"
+enable_cinder: "yes"
 #enable_cinder_backup: "yes"
-#enable_cinder_backend_hnas_nfs: "no"
 #enable_cinder_backend_iscsi: "{{ enable_cinder_backend_lvm | bool }}"
 #enable_cinder_backend_lvm: "no"
 #enable_cinder_backend_nfs: "no"
@@ -316,6 +334,7 @@ enable_openstack_core: "yes"
 #enable_cinder_backend_pure_iscsi: "no"
 #enable_cinder_backend_pure_fc: "no"
 #enable_cinder_backend_pure_roce: "no"
+#enable_cinder_backend_pure_nvme_tcp: "no"
 #enable_cloudkitty: "no"
 #enable_collectd: "no"
 #enable_cyborg: "no"
@@ -323,32 +342,27 @@ enable_openstack_core: "yes"
 #enable_destroy_images: "no"
 #enable_etcd: "no"
 #enable_fluentd: "yes"
-#enable_freezer: "no"
+#enable_fluentd_systemd: "{{ (enable_fluentd | bool) and (enable_central_logging | bool) }}"
 #enable_gnocchi: "no"
 #enable_gnocchi_statsd: "no"
-#enable_grafana: "no"
+enable_grafana: "no"
 #enable_grafana_external: "{{ enable_grafana | bool }}"
 #enable_heat: "{{ enable_openstack_core | bool }}"
 #enable_horizon: "{{ enable_openstack_core | bool }}"
 #enable_horizon_blazar: "{{ enable_blazar | bool }}"
 #enable_horizon_cloudkitty: "{{ enable_cloudkitty | bool }}"
 #enable_horizon_designate: "{{ enable_designate | bool }}"
-#enable_horizon_freezer: "{{ enable_freezer | bool }}"
+#enable_horizon_fwaas: "{{ enable_neutron_fwaas | bool }}"
 #enable_horizon_heat: "{{ enable_heat | bool }}"
 #enable_horizon_ironic: "{{ enable_ironic | bool }}"
 #enable_horizon_magnum: "{{ enable_magnum | bool }}"
 #enable_horizon_manila: "{{ enable_manila | bool }}"
 #enable_horizon_masakari: "{{ enable_masakari | bool }}"
 #enable_horizon_mistral: "{{ enable_mistral | bool }}"
-#enable_horizon_murano: "{{ enable_murano | bool }}"
 #enable_horizon_neutron_vpnaas: "{{ enable_neutron_vpnaas | bool }}"
 #enable_horizon_octavia: "{{ enable_octavia | bool }}"
-#enable_horizon_sahara: "{{ enable_sahara | bool }}"
-#enable_horizon_senlin: "{{ enable_senlin | bool }}"
-#enable_horizon_solum: "{{ enable_solum | bool }}"
 #enable_horizon_tacker: "{{ enable_tacker | bool }}"
 #enable_horizon_trove: "{{ enable_trove | bool }}"
-#enable_horizon_vitrage: "{{ enable_vitrage | bool }}"
 #enable_horizon_watcher: "{{ enable_watcher | bool }}"
 #enable_horizon_zun: "{{ enable_zun | bool }}"
 #enable_influxdb: "{{ enable_cloudkitty | bool and cloudkitty_storage_backend == 'influxdb' }}"
@@ -368,10 +382,10 @@ enable_openstack_core: "yes"
 #enable_masakari: "no"
 #enable_mistral: "no"
 #enable_multipathd: "no"
-#enable_murano: "no"
 #enable_neutron_vpnaas: "no"
 #enable_neutron_sriov: "no"
 #enable_neutron_dvr: "no"
+#enable_neutron_fwaas: "no"
 #enable_neutron_qos: "no"
 #enable_neutron_agent_ha: "no"
 #enable_neutron_bgp_dragent: "no"
@@ -387,7 +401,7 @@ enable_openstack_core: "yes"
 #enable_octavia: "no"
 #enable_octavia_driver_agent: "{{ enable_octavia | bool and neutron_plugin_agent == 'ovn' }}"
 #enable_octavia_jobboard: "{{ enable_octavia | bool and 'amphora' in octavia_provider_drivers }}"
-#enable_opensearch: "{{ enable_central_logging | bool or enable_osprofiler | bool or (enable_cloudkitty | bool and cloudkitty_storage_backend == 'elasticsearch') }}"
+#enable_opensearch: "{{ enable_central_logging | bool or enable_osprofiler | bool or (enable_cloudkitty | bool and cloudkitty_storage_backend == 'opensearch') }}"
 #enable_opensearch_dashboards: "{{ enable_opensearch | bool }}"
 #enable_opensearch_dashboards_external: "{{ enable_opensearch_dashboards | bool }}"
 #enable_openvswitch: "{{ enable_neutron | bool and neutron_plugin_agent != 'linuxbridge' }}"
@@ -395,13 +409,10 @@ enable_openstack_core: "yes"
 #enable_ovs_dpdk: "no"
 #enable_osprofiler: "no"
 #enable_placement: "{{ enable_nova | bool or enable_zun | bool }}"
-#enable_prometheus: "no"
-#enable_proxysql: "no"
+enable_prometheus: "no"
+#enable_proxysql: "yes"
 #enable_redis: "no"
-#enable_sahara: "no"
-#enable_senlin: "no"
-#enable_skyline: "no"
-#enable_solum: "no"
+enable_skyline: "yes"
 #enable_swift: "no"
 #enable_swift_s3api: "no"
 #enable_tacker: "no"
@@ -409,7 +420,6 @@ enable_openstack_core: "yes"
 #enable_trove: "no"
 #enable_trove_singletenant: "no"
 #enable_venus: "no"
-#enable_vitrage: "no"
 #enable_watcher: "no"
 #enable_zun: "no"
 
@@ -466,7 +476,7 @@ enable_openstack_core: "yes"
 #ceph_cinder_backup_pool_name: "backups"
 # Nova
 #ceph_nova_keyring: "{{ ceph_cinder_keyring }}"
-#ceph_nova_user: "nova"
+#ceph_nova_user: "{{ ceph_cinder_user }}"
 #ceph_nova_pool_name: "vms"
 # Gnocchi
 #ceph_gnocchi_user: "gnocchi"
@@ -499,7 +509,7 @@ enable_openstack_core: "yes"
 # Glance - Image Options
 ########################
 # Configure image backend.
-#glance_backend_ceph: "no"
+glance_backend_ceph: "yes"
 #glance_backend_file: "yes"
 #glance_backend_swift: "no"
 #glance_backend_vmware: "no"
@@ -546,7 +556,7 @@ enable_openstack_core: "yes"
 # Cinder - Block Storage Options
 ################################
 # Enable / disable Cinder backends
-#cinder_backend_ceph: "no"
+cinder_backend_ceph: "yes"
 #cinder_backend_vmwarevc_vmdk: "no"
 #cinder_backend_vmware_vstorage_object: "no"
 #cinder_volume_group: "cinder-volumes"
@@ -563,6 +573,7 @@ enable_openstack_core: "yes"
 #cinder_backup_s3_bucket: "{{ s3_bucket }}"
 #cinder_backup_s3_access_key: "{{ s3_access_key }}"
 #cinder_backup_s3_secret_key: "{{ s3_secret_key }}"
+cinder_cluster_skip_precheck: true
 
 #######################
 # Cloudkitty options
@@ -592,22 +603,20 @@ enable_openstack_core: "yes"
 #nova_backend_ceph: "no"
 
 # Valid options are [ qemu, kvm, vmware ]
-nova_compute_virt_type: "kvm"
+#nova_compute_virt_type: "kvm"
 
 # The number of fake driver per compute node
 #num_nova_fake_per_node: 5
 
-# The flag "nova_safety_upgrade" need to be consider when
-# "nova_enable_rolling_upgrade" is enabled. The "nova_safety_upgrade"
-# controls whether the nova services are all stopped before rolling
-# upgrade to the new version, for the safety and availability.
-# If "nova_safety_upgrade" is "yes", that will stop all nova services (except
-# nova-compute) for no failed API operations before upgrade to the
-# new version. And opposite.
+# The "nova_safety_upgrade" controls whether the nova services
+# are all stopped before rolling upgrade to the new version,
+# for the safety and availability. If "nova_safety_upgrade" is "yes",
+# that will stop all nova services (except nova-compute) for no failed
+# API operations before upgrade to the new version. And opposite.
 #nova_safety_upgrade: "no"
 
 # Valid options are [ none, novnc, spice ]
-nova_console: "novnc"
+#nova_console: "novnc"
 
 ##############################
 # Neutron - networking options
@@ -621,7 +630,7 @@ nova_console: "novnc"
 #############################
 # Horizon - Dashboard Options
 #############################
-#horizon_backend_database: "{{ enable_murano | bool }}"
+#horizon_backend_database: false
 
 #############################
 # Ironic options
@@ -739,7 +748,7 @@ nova_console: "novnc"
 #enable_prometheus_mysqld_exporter: "{{ enable_mariadb | bool }}"
 #enable_prometheus_node_exporter: "{{ enable_prometheus | bool }}"
 #enable_prometheus_cadvisor: "{{ enable_prometheus | bool }}"
-#enable_prometheus_fluentd_integration: "{{ enable_prometheus | bool and enable fluentd | bool }}"
+#enable_prometheus_fluentd_integration: "{{ enable_prometheus | bool and enable_fluentd | bool }}"
 #enable_prometheus_memcached: "{{ enable_prometheus | bool }}"
 #enable_prometheus_alertmanager: "{{ enable_prometheus | bool }}"
 #enable_prometheus_alertmanager_external: "{{ enable_prometheus_alertmanager | bool }}"
@@ -749,7 +758,6 @@ nova_console: "novnc"
 #enable_prometheus_blackbox_exporter: "{{ enable_prometheus | bool }}"
 #enable_prometheus_libvirt_exporter: "{{ enable_prometheus | bool and enable_nova | bool and nova_compute_virt_type in ['kvm', 'qemu'] }}"
 #enable_prometheus_etcd_integration: "{{ enable_prometheus | bool and enable_etcd | bool }}"
-#enable_prometheus_msteams: "no"
 
 # The labels to add to any time series or alerts when communicating with external systems (federation, remote storage, Alertmanager).
 # prometheus_external_labels:
@@ -767,7 +775,6 @@ nova_console: "novnc"
 # Extra parameters passed to Prometheus exporters.
 #prometheus_blackbox_exporter_cmdline_extras:
 #prometheus_elasticsearch_exporter_cmdline_extras:
-#prometheus_haproxy_exporter_cmdline_extras:
 #prometheus_memcached_exporter_cmdline_extras:
 #prometheus_mysqld_exporter_cmdline_extras:
 #prometheus_node_exporter_cmdline_extras:
@@ -778,15 +785,6 @@ nova_console: "novnc"
 #prometheus_ceph_mgr_exporter_endpoints:
 #  - host1:port1
 #  - host2:port2
-
-#########
-# Freezer
-#########
-# Freezer can utilize two different database backends, elasticsearch or mariadb.
-# Elasticsearch is preferred, however it is not compatible with the version deployed
-# by kolla-ansible. You must first setup an external elasticsearch with 2.3.0.
-# By default, kolla-ansible deployed mariadb is the used database backend.
-#freezer_database_backend: "mariadb"
 
 ##########
 # Telegraf
@@ -891,32 +889,3 @@ nova_console: "novnc"
 # If `etcd_remove_deleted_members` is enabled, Kolla Ansible will automatically
 # remove etcd members from the cluster that are no longer in the inventory.
 #etcd_remove_deleted_members: "no"
-enable_prometheus_server: "no"
-libvirt_enable_sasl: false
-enable_fluentd: "no"
-enable_cinder: "yes"
-enable_cinder_backend_lvm: "yes"
-#enable_swift: "yes"
-#enable_swift_s3api: "yes"
-
-################
-# Docker options
-################
-
-# Custom docker registry settings:
-#enable_docker_repo: false
-#docker_registry: "192.168.15.32:5000"
-# Please read the docs carefully before applying docker_registry_insecure.
-#docker_registry_insecure: "yes"
-#docker_registry_username:
-# docker_registry_password is set in the passwords.yml file.
-
-# Namespace of images:
-#docker_namespace: "kolla"
-
-# Docker client timeout in seconds.
-#docker_client_timeout: 120
-
-#docker_configure_for_zun: "no"
-#containerd_configure_for_zun: "no"
-#containerd_grpc_gid: 42463
