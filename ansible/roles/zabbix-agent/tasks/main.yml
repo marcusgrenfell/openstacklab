@@ -1,0 +1,19 @@
+---
+# tasks file for zabbix-agent
+  - name: Install zabbix-agent
+    ansible.builtin.apt:
+      pkg: "zabbix-agent"
+    when: zabbix_server is defined
+  
+  - name: Set zabbix-agent remote server address
+    ansible.builtin.lineinfile:
+      path: /etc/zabbix/zabbix_agentd.conf
+      regexp: '^Server:'
+      line: 'Server: {{ zabbix_server }}'
+    when: zabbix_server is defined
+
+  - name: Restart zabbix-agent
+    service:
+      name: zabbix-agent
+      state: restarted
+    when: zabbix_server is defined

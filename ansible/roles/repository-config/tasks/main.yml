@@ -3,28 +3,39 @@
 - name: Set hosts file
   shell: echo "$( ifconfig ens3 | grep 'inet ' | awk '{ print $2 }') $(hostname -s )" > /etc/hosts  
 
-- name: Remove sources.list file
+- name: Remove sources.list
   ansible.builtin.file:
     path: /etc/apt/sources.list
     state: absent
-  when: apt_repo_ip is defined
+  when: apt_repos is defined
 
-- name: Download repository file
-  get_url:
-    url: http://{{ apt_repo_ip }}/sources.list.debian
-    dest: /etc/apt/sources.list
-  when: apt_repo_ip is defined
+- name: Remove sources.list.d
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d
+    state: absent
+  when: apt_repos is defined
 
-- name: Download Docker GPG fike
-  get_url:
-    url: http://{{ apt_repo_ip }}/docker.gpg
-    #dest: /etc/apt/keyrings/docker.gpg
-    dest: /etc/apt/trusted.gpg.d/docker.gpg
-  when: apt_repo_ip is defined
+- name: Recreate source.list.d dir
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d
+    state: directory
+    mode: '0755'
+  when: apt_repos is defined    
+
+- name: Add repos
+  ansible.builtin.apt_repository:
+    repo: "{{ item }}"
+    state: present
+    filename: 'localrepos'
+  loop: "{{ apt_repos }}"
+  when: apt_repos is defined
 
 - name: Update all packages to their latest version
   ansible.builtin.apt:
     name: "*"
     state: latest
     update_cache: true
-  
+
+- name: Set fact about deployment
+  set_fact:
+    deployment_host: "{{ groups['deployment'][0] }}"

@@ -1,21 +1,22 @@
-- name: Configure Compute nodes
-  hosts: compute
-  roles:
-    - repository-config
-      #    - compute-cinder
-
-- name: Configure Controller nodes
-  hosts: control 
+- name: Repository config
+  hosts: compute,control,deployment
   roles:
     - repository-config
     - setswap
-      #    - controller-swift
-    - compute-cinder
 
 - name: Configure deployment
   hosts: deployment
   roles:
-    - repository-config
-    - setswap
     - pre-deployment
+
+- name: Configure Ceph
+  hosts: ceph,deployment
+  roles:
+    - ceph
+
+- name: Configure deployment
+  hosts: deployment
+  roles:
     - deployment
+    - initial-openstack-config
+    

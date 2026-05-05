@@ -13,11 +13,10 @@
     src: files/globals.yml
     dest: "/etc/kolla"
 
-- name: Disable docker repo if using local repo
-  ansible.builtin.lineinfile:
-    line: "enable_docker_repo: false"
-    path: "/etc/kolla/globals.yml"
-  when: apt_repo_ip is defined
+- name: Copy config folder
+  copy:
+    src: files/config
+    dest: "/etc/kolla/"
 
 - name: Configure local registry on globals.yml 
   ansible.builtin.lineinfile:
@@ -29,23 +28,59 @@
   ansible.builtin.lineinfile:
     line: "docker_registry_insecure: yes"
     path: "/etc/kolla/globals.yml"
-  when: docker_local_repo is defined
+  when: docker_local_repo_insecure is defined
 
 - name: Configure SSL tags on globals
   ansible.builtin.lineinfile:
     line: "{{ item }}"
     path: "/etc/kolla/globals.yml"
-  when: kolla_ssl is defined
+  when: kolla_ssl is defined and kolla_ssl == "yes"
   with_items: 
     - "kolla_enable_tls_internal: yes"
     - "kolla_enable_tls_external: yes"
     - "kolla_copy_ca_into_containers: yes"
     - "openstack_cacert: /etc/ssl/certs/ca-certificates.crt"
 
+- name: Set kolla_internal_vip_address
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/globals.yml
+    regexp: '^kolla_internal_vip_address'
+    line: 'kolla_internal_vip_address: {{ kolla_internal_address }}'
+
+- name: Set kolla_container_engine
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/globals.yml
+    regexp: '^kolla_container_engine'
+    line: 'kolla_container_engine: {{ kolla_container_engine }}'
+
+- name: Set enable_grafana
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/globals.yml
+    regexp: '^enable_grafana'
+    line: 'enable_grafana: {{ enable_grafana }}'
+
+- name: Set enable_prometheus
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/globals.yml
+    regexp: '^enable_prometheus'
+    line: 'enable_prometheus: {{ enable_prometheus }}'
+
+- name: Set enable_skyline
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/globals.yml
+    regexp: '^enable_skyline'
+    line: 'enable_skyline: {{ enable_skyline }}'
+
 - name: Copy inventory machines 
   copy:
     src: "{{ inventory_dir }}/inventory"
     dest: "/etc/kolla/inventory"
+
+- name: Copy Key file
+  copy:
+    src: "id_rsa.pem"
+    dest: "/etc/kolla/id_rsa.pem"
+    mode: '0400'
 
 - name: Copy inventory template
   ansible.builtin.lineinfile:
@@ -62,36 +97,26 @@
     - libffi-dev
     - gcc
     - libssl-dev
-    - python3-venv
     - python3-pip
     - htop
     - tmux
-    - sshpass
     - net-tools
-
-- name: Install ansible
-  ansible.builtin.pip:
-    name: 'ansible-core==2.15'
+    - python3-openstackclient
 
 - name: Clone kolla-ansible
   ansible.builtin.git:
-    repo: 'https://opendev.org/openstack/kolla-ansible'
+    repo: '{{ repo }}'
     dest: /root/kolla-ansible
-    #version: master
-    version: stable/2023.2
+    version: '{{ version }}'
 
 - name: Install kolla-ansible
   ansible.builtin.pip:
-    chdir: /root
-    name: ./kolla-ansible
+    name: /root/kolla-ansible
+    break_system_packages: true
   
 - name: Install kolla deps
-  ansible.builtin.command: 
-    cmd: kolla-ansible install-deps
-
-- name: Install openstack client
-  ansible.builtin.pip:
-    name: 'python-openstackclient'
+  ansible.builtin.command:
+    cmd: "kolla-ansible install-deps"
 
 - name: Copy password template file
   copy:
@@ -104,5 +129,28 @@
     cmd: python3 ./generate_passwords.py
     chdir: /root/kolla-ansible/tools
 
+- name: Set admin password
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/passwords.yml
+    regexp: '^keystone_admin_password'
+    line: 'keystone_admin_password: {{ openstack_password }}'
+
+- name: Set prometheus password
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/passwords.yml
+    regexp: '^prometheus_password'
+    line: 'prometheus_password: {{ openstack_password }}'
+
+- name: Set grafana password
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/passwords.yml
+    regexp: '^grafana_admin_password'
+    line: 'grafana_admin_password: {{ openstack_password }}'
+
 - name: Set hosts file
-  shell: echo "$( ifconfig ens3 | grep 'inet ' | awk '{ print $2 }') $(hostname -s )" > /etc/hosts  
+  shell: echo "$( ifconfig enp0s3 | grep 'inet ' | awk '{ print $2 }') $(hostname -s )" > /etc/hosts
+
+- name: Bootstrap
+  ansible.builtin.command: 
+    cmd: kolla-ansible bootstrap-servers -i inventory 
+    chdir: /etc/kolla
