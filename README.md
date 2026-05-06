@@ -2,7 +2,9 @@
 
 > ![#f03c15](https://placehold.co/15x15/f03c15/f03c15.png) "If you have permission's error when terraform is creating, check the folder permissions-error"
 
-[![Video ](https://img.youtube.com/vi/fh16eRpCmRM/maxresdefault.jpg)](https://www.youtube.com/watch?v=fh16eRpCmRM)
+
+## 🎥 Demo Video
+[Watch the demo video on YouTube](https://www.youtube.com/watch?v=fh16eRpCmRM)
 
 
 # Table of Contents
