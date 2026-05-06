@@ -2,6 +2,25 @@
 
 > ![#f03c15](https://placehold.co/15x15/f03c15/f03c15.png) "If you have permission's error when terraform is creating, check the folder permissions-error"
 
+# Table of Contents
+
+- [Description](#description)
+- [How to Run the Lab](#how-to-run-the-lab)
+  - [0. Install dependencies and create a python virtual env](#0-install-dependencies-and-create-a-python-virtual-env)
+  - [1. Provision the infrastructure with Terraform](#1-provision-the-infrastructure-with-terraform)
+  - [2. Deploy and configure OpenStack with Ansible](#2-deploy-and-configure-openstack-with-ansible)
+
+- [How to Customize the Lab](#how-to-customize-the-lab)
+  - [Terraform variables](#terraform-variables)
+  - [Ansible variables](#ansible-variables)
+
+- [Ceph](#ceph)
+
+- [Details](#details)
+  - [Network](#network)
+  - [Ansible Roles](#ansible-roles)
+ 
+  
 ## Description
 
 Builds a local OpenStack lab using Terraform, libvirt/KVM, Ansible, Kolla Ansible, and Ceph.

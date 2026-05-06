@@ -230,6 +230,8 @@ Goal:
 # Final Challenge
 
 Build a small production-like cloud environment containing:
+- Complete offline setup with local registry / apt repo
+- Change the logo of GUI :)
 - Multiple projects
 - Tenant isolation
 - Persistent storage
