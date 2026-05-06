@@ -8,10 +8,10 @@
 
 
 
-
 # Table of Contents
 
 - [Description](#description)
+- [Requirements](#requirements)
 - [How to Run the Lab](#how-to-run-the-lab)
   - [0. Install dependencies and create a python virtual env](#0-install-dependencies-and-create-a-python-virtual-env)
   - [1. Provision the infrastructure with Terraform](#1-provision-the-infrastructure-with-terraform)
@@ -47,6 +47,12 @@ The purpose is to have a way to quickly create a lab for:
 - Testing functionalities of openstack
 - Planning version updates in production (test to upgrade to ubuntu 24.04 and openstack 2025.1)
 - Having fun
+
+## Requirements
+- Linux machine with libvirt/qemu (simple install virt-manager package)
+- At least 16GB of ram (the minimun size of lab will use ~13GB of ram)
+- About 30GB of disk space
+
 
 ## How to Run the Lab
 
