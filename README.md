@@ -27,6 +27,7 @@
   - [Network](#network)
   - [Ansible Roles](#ansible-roles)
  
+![Topology](topology.png)
   
 ## Description
 
